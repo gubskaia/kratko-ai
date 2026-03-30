@@ -18,8 +18,8 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
-    'django.contrib.staticfiles',
-    
+    'django.contrib.staticfiles',  # <-- нужен для runserver
+
     'rest_framework',
     'api',
 ]
@@ -35,6 +35,24 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'summarizer.urls'
+
+# ==================== TEMPLATES ====================
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
+]
+
 WSGI_APPLICATION = 'summarizer.wsgi.application'
 
 DATABASES = {
@@ -44,7 +62,10 @@ DATABASES = {
     }
 }
 
-# ======================= MEDIA =======================
+# ======================= STATIC FILES =======================
+STATIC_URL = '/static/'
+
+# ======================= MEDIA FILES =======================
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
