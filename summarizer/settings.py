@@ -76,7 +76,9 @@ REST_FRAMEWORK = {
     ],
 }
 
-# ======================= OPENAI =======================
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
-if not OPENAI_API_KEY:
-    print("⚠️ WARNING: OPENAI_API_KEY not found in .env file!")
+# ======================= OPENROUTER =======================
+OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY')
+if not OPENROUTER_API_KEY:
+    print("❌ OPENROUTER_API_KEY не найден в .env")
+else:
+    print("✅ OPENROUTER_API_KEY загружен")
