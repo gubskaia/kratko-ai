@@ -21,10 +21,13 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',  # <-- нужен для runserver
 
     'rest_framework',
+    'rest_framework_simplejwt',
+    'corsheaders',
     'api',
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -71,14 +74,20 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 # ======================= REST FRAMEWORK =======================
 REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ],
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.AllowAny',
+        'rest_framework.permissions.IsAuthenticated',
     ],
 }
+
+# ======================= CORS =======================
+CORS_ALLOW_ALL_ORIGINS = True  # Для MVP. В проде ограничить.
 
 # ======================= OPENROUTER =======================
 OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY')
 if not OPENROUTER_API_KEY:
-    print("❌ OPENROUTER_API_KEY не найден в .env")
+    print("ERROR: OPENROUTER_API_KEY not found in .env")
 else:
-    print("✅ OPENROUTER_API_KEY загружен")
+    print("SUCCESS: OPENROUTER_API_KEY loaded")

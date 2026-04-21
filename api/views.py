@@ -1,19 +1,35 @@
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, generics, permissions
 from rest_framework.response import Response
 from rest_framework.decorators import action
 
 from .models import UploadedFile
-from .serializers import UploadedFileSerializer
+from .serializers import UploadedFileSerializer, RegisterSerializer, UserSerializer
 from .processors import process_uploaded_file
+
+
+class RegisterView(generics.CreateAPIView):
+    """
+    Эндпоинт для регистрации нового пользователя.
+    """
+    queryset = UploadedFile.objects.all()
+    permission_classes = (permissions.AllowAny,)
+    serializer_class = RegisterSerializer
 
 
 class UploadedFileViewSet(viewsets.ModelViewSet):
     """
     ViewSet для полного CRUD операций с загруженными файлами.
-    Поддерживает загрузку, просмотр списка, детальный просмотр, обновление и удаление.
+    Показывает только файлы текущего пользователя.
     """
-    queryset = UploadedFile.objects.all().order_by('-uploaded_at')
     serializer_class = UploadedFileSerializer
+
+    def get_queryset(self):
+        # Показываем только файлы текущего пользователя
+        return UploadedFile.objects.filter(user=self.request.user).order_by('-uploaded_at')
+
+    def perform_create(self, serializer):
+        # Автоматически привязываем файл к текущему пользователю
+        serializer.save(user=self.request.user)
 
     def create(self, request, *args, **kwargs):
         """Переопределяем создание для автоматической обработки файла ИИ"""
@@ -21,7 +37,7 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
 
         # Сохраняем файл в базу
-        instance = serializer.save()
+        instance = serializer.save(user=request.user)
 
         # Если пользователь не передал название — используем имя файла
         if not instance.title:
@@ -62,4 +78,4 @@ class UploadedFileViewSet(viewsets.ModelViewSet):
         return Response(
             {"error": "Файл уже находится в процессе обработки"},
             status=status.HTTP_400_BAD_REQUEST
-        )
+        )

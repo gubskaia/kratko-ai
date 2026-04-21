@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth.models import User
 
 class UploadedFile(models.Model):
     STATUS_CHOICES = [
@@ -9,6 +10,7 @@ class UploadedFile(models.Model):
     ]
 
     title = models.CharField(max_length=255, blank=True, verbose_name="Название")
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='files', null=True, blank=True)
     file = models.FileField(upload_to='uploads/', verbose_name="Файл")
     uploaded_at = models.DateTimeField(auto_now_add=True)
     file_type = models.CharField(max_length=100, blank=True)
