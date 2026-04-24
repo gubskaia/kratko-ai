@@ -1,0 +1,15 @@
+.git
+.gitignore
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/.pytest_cache
+**/.mypy_cache
+**/.venv
+**/node_modules
+**/dist
+**/build
+back/db.sqlite3
+back/media
+front/node_modules

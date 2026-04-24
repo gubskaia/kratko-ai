@@ -73,6 +73,15 @@ OPENROUTER_FALLBACK_MODELS=model-a,model-b
 run.bat
 ```
 
+### Docker
+
+```bash
+docker compose up --build
+```
+
+Frontend: `http://localhost:5173`  
+Backend: `http://localhost:8000`
+
 ### Backend
 
 ```bash
