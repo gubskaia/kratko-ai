@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Sparkles, Copy, Download } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -18,12 +19,62 @@ interface ResultViewProps {
 
 export function ResultView({ result }: ResultViewProps) {
   const { t } = useLanguage();
+
   if (!result) {
     return null;
   }
 
+  const renderStructuredSummary = (summary: string): ReactNode[] => {
+    return summary
+      .split('\n')
+      .map((line) => line.trimEnd())
+      .map((line, index, arr) => ({ line, index, prev: arr[index - 1] }))
+      .filter(({ line, prev }) => line || prev !== '')
+      .map(({ line, index }) => {
+        const trimmed = line.trim();
+
+        if (!trimmed) {
+          return <div key={`space-${index}`} className="h-3" />;
+        }
+
+        const headingMatch = trimmed.match(/^\*\*(.+)\*\*$/);
+        if (headingMatch) {
+          return (
+            <h4 key={`heading-${index}`} className="text-foreground font-['Inter'] mt-6 first:mt-0">
+              {headingMatch[1]}
+            </h4>
+          );
+        }
+
+        if (trimmed.startsWith('- ')) {
+          return (
+            <div
+              key={`bullet-${index}`}
+              className="flex gap-3 text-foreground/80 font-['Inter']"
+              style={{ fontSize: '0.9375rem' }}
+            >
+              <span className="text-primary mt-0.5">•</span>
+              <span>{trimmed.slice(2)}</span>
+            </div>
+          );
+        }
+
+        return (
+          <p
+            key={`text-${index}`}
+            className="text-foreground/70 leading-relaxed font-['Inter']"
+            style={{ fontSize: '0.9375rem' }}
+          >
+            {trimmed}
+          </p>
+        );
+      });
+  };
+
   const handleCopy = () => {
-    const text = `${result.title}\n\n${result.summary}\n\nKey Points:\n${result.keyPoints.map(point => `• ${point}`).join('\n')}`;
+    const text = `${result.title}\n\n${result.summary}\n\nKey Points:\n${result.keyPoints
+      .map((point) => `• ${point}`)
+      .join('\n')}`;
     navigator.clipboard.writeText(text);
   };
 
@@ -73,9 +124,9 @@ export function ResultView({ result }: ResultViewProps) {
             {result.title}
           </h3>
 
-          <p className="text-foreground/70 leading-relaxed mb-8 font-['Inter']" style={{ fontSize: '0.9375rem' }}>
-            {result.summary}
-          </p>
+          <div className="mb-8 space-y-3">
+            {renderStructuredSummary(result.summary)}
+          </div>
 
           <div className="space-y-6">
             <h4 className="text-foreground font-['Inter']">

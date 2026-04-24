@@ -11,7 +11,7 @@ export function Auth({ onAuth }: AuthProps) {
   const [isSignUp, setIsSignUp] = useState(false);
   const [formData, setFormData] = useState({
     username: '',
-    email: '',
+    identifier: '',
     password: ''
   });
   const [error, setError] = useState('');
@@ -20,18 +20,19 @@ export function Auth({ onAuth }: AuthProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    const username = formData.username || formData.email.split('@')[0];
+    const username = formData.username.trim() || formData.identifier.split('@')[0];
+    const identifier = formData.identifier.trim();
     try {
       if (isSignUp) {
         await api.register({
           username,
-          email: formData.email,
+          email: identifier,
           password: formData.password
         });
       }
       
       const { access, refresh } = await api.login({
-        username,
+        username: isSignUp ? username : identifier,
         password: formData.password
       });
       
@@ -150,11 +151,11 @@ export function Auth({ onAuth }: AuthProps) {
                 {t('email')}
               </label>
               <input
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                type={isSignUp ? 'email' : 'text'}
+                value={formData.identifier}
+                onChange={(e) => setFormData({ ...formData, identifier: e.target.value })}
                 className="w-full px-4 py-3 rounded-xl bg-input border border-border text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 font-['Inter']"
-                placeholder="your@email.com"
+                placeholder={isSignUp ? 'your@email.com' : 'email or username'}
                 required
               />
             </div>

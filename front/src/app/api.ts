@@ -1,5 +1,28 @@
 export const BASE_URL = '/api';
 
+const parseError = async (res: Response, fallbackMessage: string) => {
+  try {
+    const data = await res.json();
+    const firstValue = Object.values(data)[0];
+    const normalizedFirstValue = Array.isArray(firstValue)
+      ? firstValue.join(' ')
+      : firstValue;
+    const message =
+      data.error_message ||
+      data.error ||
+      data.detail ||
+      normalizedFirstValue;
+
+    throw new Error(typeof message === 'string' ? message : fallbackMessage);
+  } catch (error) {
+    if (error instanceof Error) {
+      throw error;
+    }
+
+    throw new Error(fallbackMessage);
+  }
+};
+
 export const getHeaders = () => {
   const token = localStorage.getItem('access');
   return {
@@ -15,7 +38,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-    if (!res.ok) throw new Error('Login failed');
+    if (!res.ok) await parseError(res, 'Login failed');
     return res.json();
   },
 
@@ -25,7 +48,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-    if (!res.ok) throw new Error('Registration failed');
+    if (!res.ok) await parseError(res, 'Registration failed');
     return res.json();
   },
 
@@ -42,7 +65,7 @@ export const api = {
       },
       body: formData
     });
-    if (!res.ok) throw new Error('Upload failed');
+    if (!res.ok) await parseError(res, 'Upload failed');
     return res.json();
   },
 
@@ -50,7 +73,7 @@ export const api = {
     const res = await fetch(`${BASE_URL}/uploads/`, {
       headers: getHeaders()
     });
-    if (!res.ok) throw new Error('Failed to fetch');
+    if (!res.ok) await parseError(res, 'Failed to fetch');
     return res.json();
   },
 
@@ -58,7 +81,7 @@ export const api = {
     const res = await fetch(`${BASE_URL}/uploads/${id}/`, {
       headers: getHeaders()
     });
-    if (!res.ok) throw new Error('Failed to fetch');
+    if (!res.ok) await parseError(res, 'Failed to fetch');
     return res.json();
   }
 };

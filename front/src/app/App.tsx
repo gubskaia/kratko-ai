@@ -33,6 +33,41 @@ function AppContent() {
   const [loading, setLoading] = useState(false);
   const { t } = useLanguage();
 
+  const buildResult = (item: any): SummaryResult => {
+    const summary =
+      item.status === 'failed'
+        ? `Error: ${item.error_message || 'Document processing failed.'}`
+        : item.status === 'processing' || item.status === 'pending'
+          ? 'Document uploaded. Processing is still running, please wait a few seconds.'
+          : item.summary || 'Completed, but the server returned an empty summary.';
+
+    const textForCount = item.extracted_text || item.summary || '';
+
+    return {
+      title: item.title,
+      summary,
+      keyPoints: [],
+      metadata: {
+        wordCount: textForCount ? textForCount.trim().split(/\s+/).length : 0,
+        readTime: 'Unknown',
+        confidence: item.status === 'completed' ? 100 : 0
+      }
+    };
+  };
+
+  const waitForCompletedSummary = async (id: string) => {
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      const item = await api.getSummary(id);
+      if (item.status !== 'processing' && item.status !== 'pending') {
+        return item;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+    }
+
+    return api.getSummary(id);
+  };
+
   const fetchRecent = async () => {
     try {
       const data = await api.getRecentSummaries();
@@ -55,20 +90,25 @@ function AppContent() {
   const handleFileUpload = async (file: File) => {
     setLoading(true);
     try {
-      const res = await api.uploadFile(file);
-      setCurrentResult({
-        title: res.title,
-        summary: res.summary || 'Processing or completed without summary.',
-        keyPoints: [], // Extract logic can be added later or handled by prompt returning markdown
-        metadata: {
-          wordCount: res.extracted_text?.split(' ').length || 0,
-          readTime: 'Unknown',
-          confidence: 100
-        }
-      });
-      fetchRecent();
+      const created = await api.uploadFile(file);
+      const resolved = created.status === 'processing' || created.status === 'pending'
+        ? await waitForCompletedSummary(String(created.id))
+        : created;
+
+      setCurrentResult(buildResult(resolved));
+      await fetchRecent();
     } catch (err) {
       console.error(err);
+      setCurrentResult({
+        title: file.name,
+        summary: err instanceof Error ? `Error: ${err.message}` : 'Error: upload failed.',
+        keyPoints: [],
+        metadata: {
+          wordCount: 0,
+          readTime: 'Unknown',
+          confidence: 0
+        }
+      });
     } finally {
       setLoading(false);
     }
@@ -76,17 +116,8 @@ function AppContent() {
 
   const handleSelectSummary = async (id: string) => {
     try {
-      const res = await api.getSummary(id);
-      setCurrentResult({
-        title: res.title,
-        summary: res.status === 'failed' ? `Error: ${res.error_message}` : res.summary,
-        keyPoints: [], 
-        metadata: {
-          wordCount: res.summary?.split(' ').length || 0,
-          readTime: 'Unknown',
-          confidence: 100
-        }
-      });
+      const res = await waitForCompletedSummary(id);
+      setCurrentResult(buildResult(res));
     } catch (err) {
       console.error(err);
     }
