@@ -2,6 +2,8 @@ import os
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.contrib.auth.password_validation import validate_password
+from django.contrib.auth.validators import UnicodeUsernameValidator
 from rest_framework import serializers
 from rest_framework_simplejwt.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
@@ -10,6 +12,7 @@ from .models import UploadedFile
 
 
 User = get_user_model()
+username_validator = UnicodeUsernameValidator()
 
 DEFAULT_ALLOWED_EXTENSIONS = (".pdf", ".docx", ".txt")
 DEFAULT_MAX_UPLOAD_SIZE = 10 * 1024 * 1024
@@ -22,7 +25,7 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class RegisterSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, min_length=8, trim_whitespace=False)
+    password = serializers.CharField(write_only=True, trim_whitespace=False, style={"input_type": "password"})
     email = serializers.EmailField()
 
     class Meta:
@@ -33,8 +36,18 @@ class RegisterSerializer(serializers.ModelSerializer):
         username = value.strip()
         if not username:
             raise serializers.ValidationError("Username cannot be empty.")
+
+        username_validator(username)
+
+        if len(username) < 3:
+            raise serializers.ValidationError("Username must be at least 3 characters long.")
+
+        if len(username) > 30:
+            raise serializers.ValidationError("Username must be 30 characters or fewer.")
+
         if User.objects.filter(username__iexact=username).exists():
             raise serializers.ValidationError("A user with this username already exists.")
+
         return username
 
     def validate_email(self, value: str) -> str:
@@ -42,6 +55,13 @@ class RegisterSerializer(serializers.ModelSerializer):
         if User.objects.filter(email__iexact=email).exists():
             raise serializers.ValidationError("A user with this email already exists.")
         return email
+
+    def validate_password(self, value: str) -> str:
+        username = (self.initial_data.get("username") or "").strip()
+        email = (self.initial_data.get("email") or "").strip().lower()
+        temp_user = User(username=username, email=email)
+        validate_password(value, user=temp_user)
+        return value
 
     def create(self, validated_data):
         return User.objects.create_user(

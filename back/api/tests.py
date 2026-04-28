@@ -45,6 +45,34 @@ class AuthenticationApiTests(APITestCase):
         self.assertIn("access", response.data)
         self.assertIn("refresh", response.data)
 
+    def test_register_rejects_weak_password(self):
+        response = self.client.post(
+            reverse("register"),
+            {
+                "username": "testuser",
+                "email": "user@example.com",
+                "password": "12345678",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("password", response.data)
+
+    def test_register_rejects_invalid_username(self):
+        response = self.client.post(
+            reverse("register"),
+            {
+                "username": "ab",
+                "email": "user@example.com",
+                "password": "strong-pass-123",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("username", response.data)
+
 
 class UploadedFileApiTests(APITestCase):
     def setUp(self):

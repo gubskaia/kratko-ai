@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Mail, Lock, User, Sparkles, ArrowRight } from 'lucide-react';
+import { Sparkles, ArrowRight } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { api } from '../api';
 
@@ -7,21 +7,87 @@ interface AuthProps {
   onAuth: (user: { name: string; username: string }) => void;
 }
 
+interface FormDataState {
+  username: string;
+  identifier: string;
+  password: string;
+}
+
+interface FormErrors {
+  username?: string;
+  identifier?: string;
+  password?: string;
+  form?: string;
+}
+
+const USERNAME_PATTERN = /^[\w.@+-]+$/;
+
 export function Auth({ onAuth }: AuthProps) {
   const [isSignUp, setIsSignUp] = useState(false);
-  const [formData, setFormData] = useState({
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState<FormDataState>({
     username: '',
     identifier: '',
     password: ''
   });
-  const [error, setError] = useState('');
+  const [errors, setErrors] = useState<FormErrors>({});
   const { t } = useLanguage();
+
+  const setField = (field: keyof FormDataState, value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    setErrors((prev) => ({ ...prev, [field]: undefined, form: undefined }));
+  };
+
+  const validate = (): FormErrors => {
+    const nextErrors: FormErrors = {};
+    const username = formData.username.trim();
+    const identifier = formData.identifier.trim();
+    const password = formData.password;
+
+    if (isSignUp) {
+      if (!username) {
+        nextErrors.username = 'Enter a username.';
+      } else if (username.length < 3) {
+        nextErrors.username = 'Username must be at least 3 characters long.';
+      } else if (username.length > 30) {
+        nextErrors.username = 'Username must be 30 characters or fewer.';
+      } else if (!USERNAME_PATTERN.test(username)) {
+        nextErrors.username = 'Use only letters, numbers, and ./+/-/_/@ in the username.';
+      }
+
+      if (!identifier) {
+        nextErrors.identifier = 'Enter your email address.';
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier)) {
+        nextErrors.identifier = 'Enter a valid email address.';
+      }
+    } else if (!identifier) {
+      nextErrors.identifier = 'Enter your email or username.';
+    }
+
+    if (!password) {
+      nextErrors.password = 'Enter your password.';
+    } else if (isSignUp && password.length < 8) {
+      nextErrors.password = 'Password must be at least 8 characters long.';
+    }
+
+    return nextErrors;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    const username = formData.username.trim() || formData.identifier.split('@')[0];
+
+    const nextErrors = validate();
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors(nextErrors);
+      return;
+    }
+
+    const username = formData.username.trim();
     const identifier = formData.identifier.trim();
+
+    setIsSubmitting(true);
+    setErrors({});
+
     try {
       if (isSignUp) {
         await api.register({
@@ -30,23 +96,36 @@ export function Auth({ onAuth }: AuthProps) {
           password: formData.password
         });
       }
-      
+
       const { access, refresh } = await api.login({
         username: isSignUp ? username : identifier,
         password: formData.password
       });
-      
+
       localStorage.setItem('access', access);
       localStorage.setItem('refresh', refresh);
-      
+
       onAuth({
-        name: username,
-        username: username
+        name: username || identifier,
+        username: username || identifier
       });
     } catch (err: any) {
-      setError(err.message || 'Authentication failed');
+      const fieldErrors = err?.fieldErrors as FormErrors | undefined;
+      if (fieldErrors && Object.keys(fieldErrors).length > 0) {
+        setErrors(fieldErrors);
+      } else {
+        setErrors({ form: err?.message || 'Authentication failed' });
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
+
+  const inputBaseClassName =
+    'w-full px-4 py-3 rounded-xl bg-input border text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 font-[\'Inter\']';
+
+  const getInputClassName = (hasError: boolean) =>
+    `${inputBaseClassName} ${hasError ? 'border-red-500 focus:ring-red-500/20 focus:border-red-500' : 'border-border'}`;
 
   return (
     <div className="min-h-screen flex bg-background">
@@ -123,41 +202,49 @@ export function Auth({ onAuth }: AuthProps) {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {error && (
-              <div className="p-3 rounded-lg bg-red-500/20 border border-red-500/50 text-red-500 text-sm">
-                {error}
+          <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+            {errors.form && (
+              <div className="p-3 rounded-lg bg-red-500/15 border border-red-500/40 text-red-300 text-sm">
+                {errors.form}
               </div>
             )}
-            
+
             {isSignUp && (
               <div>
                 <label className="block text-foreground mb-2 font-['Inter']" style={{ fontSize: '0.875rem' }}>
-                  {t('fullName')}
+                  Username
                 </label>
                 <input
                   type="text"
                   value={formData.username}
-                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl bg-input border border-border text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 font-['Inter']"
+                  onChange={(e) => setField('username', e.target.value)}
+                  className={getInputClassName(Boolean(errors.username))}
                   placeholder="johndoe"
+                  autoComplete="username"
                   required={isSignUp}
                 />
+                {errors.username && (
+                  <p className="mt-2 text-sm text-red-400">{errors.username}</p>
+                )}
               </div>
             )}
 
             <div>
               <label className="block text-foreground mb-2 font-['Inter']" style={{ fontSize: '0.875rem' }}>
-                {t('email')}
+                {isSignUp ? 'Email' : 'Email or username'}
               </label>
               <input
                 type={isSignUp ? 'email' : 'text'}
                 value={formData.identifier}
-                onChange={(e) => setFormData({ ...formData, identifier: e.target.value })}
-                className="w-full px-4 py-3 rounded-xl bg-input border border-border text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 font-['Inter']"
+                onChange={(e) => setField('identifier', e.target.value)}
+                className={getInputClassName(Boolean(errors.identifier))}
                 placeholder={isSignUp ? 'your@email.com' : 'email or username'}
+                autoComplete={isSignUp ? 'email' : 'username'}
                 required
               />
+              {errors.identifier && (
+                <p className="mt-2 text-sm text-red-400">{errors.identifier}</p>
+              )}
             </div>
 
             <div>
@@ -167,11 +254,15 @@ export function Auth({ onAuth }: AuthProps) {
               <input
                 type="password"
                 value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                className="w-full px-4 py-3 rounded-xl bg-input border border-border text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 font-['Inter']"
-                placeholder="••••••••"
+                onChange={(e) => setField('password', e.target.value)}
+                className={getInputClassName(Boolean(errors.password))}
+                placeholder="********"
+                autoComplete={isSignUp ? 'new-password' : 'current-password'}
                 required
               />
+              {errors.password && (
+                <p className="mt-2 text-sm text-red-400">{errors.password}</p>
+              )}
             </div>
 
             {!isSignUp && (
@@ -188,16 +279,20 @@ export function Auth({ onAuth }: AuthProps) {
 
             <button
               type="submit"
-              className="w-full py-3.5 rounded-xl bg-primary hover:bg-primary/90 text-white transition-all duration-200 shadow-lg hover:shadow-xl font-['Inter'] flex items-center justify-center gap-2 group"
+              disabled={isSubmitting}
+              className="w-full py-3.5 rounded-xl bg-primary hover:bg-primary/90 disabled:opacity-60 disabled:cursor-not-allowed text-white transition-all duration-200 shadow-lg hover:shadow-xl font-['Inter'] flex items-center justify-center gap-2 group"
             >
-              {t('continue')}
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              {isSubmitting ? 'Please wait...' : t('continue')}
+              {!isSubmitting && <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />}
             </button>
 
             <div className="text-center">
               <button
                 type="button"
-                onClick={() => setIsSignUp(!isSignUp)}
+                onClick={() => {
+                  setIsSignUp(!isSignUp);
+                  setErrors({});
+                }}
                 className="text-muted-foreground hover:text-foreground transition-colors font-['Inter']"
                 style={{ fontSize: '0.875rem' }}
               >

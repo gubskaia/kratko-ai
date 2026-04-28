@@ -3,17 +3,31 @@ export const BASE_URL = '/api';
 const parseError = async (res: Response, fallbackMessage: string) => {
   try {
     const data = await res.json();
-    const firstValue = Object.values(data)[0];
-    const normalizedFirstValue = Array.isArray(firstValue)
-      ? firstValue.join(' ')
-      : firstValue;
+    const fieldErrors = Object.entries(data).reduce<Record<string, string>>((acc, [key, value]) => {
+      if (typeof value === 'string') {
+        acc[key] = value;
+      } else if (Array.isArray(value)) {
+        acc[key] = value.join(' ');
+      }
+
+      return acc;
+    }, {});
+    const firstValue = Object.values(fieldErrors)[0];
     const message =
       data.error_message ||
       data.error ||
       data.detail ||
-      normalizedFirstValue;
+      firstValue;
 
-    throw new Error(typeof message === 'string' ? message : fallbackMessage);
+    const error = new Error(typeof message === 'string' ? message : fallbackMessage) as Error & {
+      fieldErrors?: Record<string, string>;
+    };
+
+    if (Object.keys(fieldErrors).length > 0) {
+      error.fieldErrors = fieldErrors;
+    }
+
+    throw error;
   } catch (error) {
     if (error instanceof Error) {
       throw error;
