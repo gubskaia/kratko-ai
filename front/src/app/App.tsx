@@ -8,9 +8,11 @@ import { Auth } from './components/Auth';
 import { SettingsDropdown } from './components/SettingsDropdown';
 
 interface SummaryResult {
+  id: string;
   title: string;
   summary: string;
   keyPoints: string[];
+  status: string;
   metadata: {
     wordCount: number;
     readTime: string;
@@ -44,9 +46,11 @@ function AppContent() {
     const textForCount = item.extracted_text || item.summary || '';
 
     return {
+      id: String(item.id),
       title: item.title,
       summary,
       keyPoints: [],
+      status: item.status,
       metadata: {
         wordCount: textForCount ? textForCount.trim().split(/\s+/).length : 0,
         readTime: 'Unknown',
@@ -100,9 +104,11 @@ function AppContent() {
     } catch (err) {
       console.error(err);
       setCurrentResult({
+        id: 'error',
         title: file.name,
         summary: err instanceof Error ? `Error: ${err.message}` : 'Error: upload failed.',
         keyPoints: [],
+        status: 'failed',
         metadata: {
           wordCount: 0,
           readTime: 'Unknown',

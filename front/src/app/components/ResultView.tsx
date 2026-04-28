@@ -3,9 +3,11 @@ import { Sparkles, Copy, Download } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface SummaryResult {
+  id: string;
   title: string;
   summary: string;
   keyPoints: string[];
+  status: string;
   metadata: {
     wordCount: number;
     readTime: string;
@@ -23,6 +25,17 @@ export function ResultView({ result }: ResultViewProps) {
   if (!result) {
     return null;
   }
+
+  const canDownload = result.status === 'completed' && Boolean(result.summary.trim());
+
+  const buildDownloadFileName = (title: string) => {
+    const sanitizedTitle = title
+      .replace(/\.[^/.]+$/, '')
+      .replace(/[<>:"/\\|?*\x00-\x1F]/g, '_')
+      .trim();
+
+    return `${sanitizedTitle || 'summary'}-summary.txt`;
+  };
 
   const renderStructuredSummary = (summary: string): ReactNode[] => {
     return summary
@@ -73,9 +86,28 @@ export function ResultView({ result }: ResultViewProps) {
 
   const handleCopy = () => {
     const text = `${result.title}\n\n${result.summary}\n\nKey Points:\n${result.keyPoints
-      .map((point) => `• ${point}`)
+      .map((point) => `- ${point}`)
       .join('\n')}`;
     navigator.clipboard.writeText(text);
+  };
+
+  const handleDownload = () => {
+    if (!canDownload) {
+      return;
+    }
+
+    const blob = new Blob([`${result.title}\n\n${result.summary}\n`], {
+      type: 'text/plain;charset=utf-8'
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+
+    link.href = url;
+    link.download = buildDownloadFileName(result.title);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -112,7 +144,12 @@ export function ResultView({ result }: ResultViewProps) {
               >
                 <Copy className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
               </button>
-              <button className="p-2.5 rounded-xl bg-secondary hover:bg-secondary/80 border border-border transition-all duration-200 group">
+              <button
+                onClick={handleDownload}
+                disabled={!canDownload}
+                title={canDownload ? 'Download summary as TXT' : 'Summary is not ready for download yet'}
+                className="p-2.5 rounded-xl bg-secondary hover:bg-secondary/80 disabled:opacity-50 disabled:cursor-not-allowed border border-border transition-all duration-200 group"
+              >
                 <Download className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
               </button>
             </div>
