@@ -1,9 +1,14 @@
 import mimetypes
 import os
+import logging
 
 from django.conf import settings
 from openai import OpenAI
 
+from .models import UploadedFile
+
+
+logger = logging.getLogger(__name__)
 
 client = OpenAI(
     base_url="https://openrouter.ai/api/v1",
@@ -52,33 +57,43 @@ def extract_text(file_path: str) -> str:
 
 
 def summarize_text(text: str) -> str:
+    normalized_text = "\n".join(
+        line.strip() for line in text.replace("\r\n", "\n").splitlines() if line.strip()
+    )
+
     request_kwargs = {
         "model": OPENROUTER_MODEL,
         "messages": [
             {
                 "role": "system",
                 "content": (
-                    "You are a professional assistant. Write the answer in Russian and always "
-                    "follow this exact structure:\n\n"
+                    "Ты профессиональный редактор и помощник по краткому пересказу текста. "
+                    "Всегда отвечай на грамотном, естественном русском языке без канцелярита, "
+                    "ломаных формулировок и выдуманных деталей.\n\n"
+                    "Строго соблюдай эту структуру ответа:\n\n"
                     "**Общая характеристика**\n"
-                    "1-2 short paragraphs with a plain-language overview.\n\n"
+                    "1 короткий абзац на 2-3 предложения с понятным пересказом сути текста.\n\n"
                     "**Основные моменты**\n"
-                    "- bullet point\n"
-                    "- bullet point\n"
-                    "- bullet point\n\n"
+                    "- 2-4 кратких пункта по делу\n\n"
                     "**Вывод**\n"
-                    "1 short concluding paragraph.\n\n"
-                    "Keep the output concise, structured, and easy to scan. "
-                    "Do not add extra sections."
+                    "1 короткое итоговое предложение.\n\n"
+                    "Правила:\n"
+                    "- Не добавляй факты, которых нет в исходном тексте.\n"
+                    "- Пиши просто, связно и естественно.\n"
+                    "- Если исходный текст уже короткий, делай аккуратный пересказ без чрезмерного сжатия.\n"
+                    "- Не добавляй никаких других заголовков или секций."
                 ),
             },
             {
                 "role": "user",
-                "content": f"Text for summarization:\n\n{text[:110000]}",
+                "content": (
+                    "Сделай краткий и грамотный пересказ этого текста:\n\n"
+                    f"{normalized_text[:110000]}"
+                ),
             },
         ],
         "max_tokens": 1200,
-        "temperature": 0.4,
+        "temperature": 0.2,
     }
 
     if OPENROUTER_FALLBACK_MODELS:
@@ -102,18 +117,18 @@ def summarize_text(text: str) -> str:
 def process_uploaded_file(instance):
     file_path = instance.file.path
     instance.file_type = mimetypes.guess_type(file_path)[0] or ""
-    instance.status = "processing"
+    instance.status = UploadedFile.Status.PROCESSING
     instance.save(update_fields=["file_type", "status"])
 
     try:
         raw_text = extract_text(file_path)
         instance.extracted_text = raw_text[:8000]
         instance.summary = summarize_text(raw_text)
-        instance.status = "completed"
+        instance.status = UploadedFile.Status.COMPLETED
         instance.error_message = ""
     except Exception as exc:
-        instance.status = "failed"
+        instance.status = UploadedFile.Status.FAILED
         instance.error_message = str(exc)
-        print(f"Processing error: {exc}")
+        logger.exception("File processing failed", extra={"uploaded_file_id": instance.pk})
     finally:
         instance.save(update_fields=["extracted_text", "summary", "status", "error_message"])

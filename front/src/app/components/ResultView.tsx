@@ -53,7 +53,7 @@ export function ResultView({ result }: ResultViewProps) {
               className="flex gap-3 text-foreground/80 font-['Inter']"
               style={{ fontSize: '0.9375rem' }}
             >
-              <span className="text-primary mt-0.5">•</span>
+              <span className="text-primary mt-0.5">&bull;</span>
               <span>{trimmed.slice(2)}</span>
             </div>
           );
