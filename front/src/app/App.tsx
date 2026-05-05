@@ -140,6 +140,32 @@ function AppContent() {
     setCurrentResult(null);
   };
 
+  const handleDeleteSummary = async (id: string) => {
+    try {
+      await api.deleteSummary(id);
+      if (currentResult?.id === id) {
+        setCurrentResult(null);
+      }
+      await fetchRecent();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleUpdateSummary = async (id: string, payload: { title?: string; summary?: string }) => {
+    try {
+      const updated = await api.updateSummary(id, payload);
+      if (currentResult?.id === id) {
+        setCurrentResult(buildResult(updated));
+      }
+      if (payload.title) {
+        await fetchRecent();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   if (!user) {
     return <Auth onAuth={setUser} />;
   }
@@ -152,6 +178,7 @@ function AppContent() {
         onNewChat={handleNewChat}
         userName={user.name}
         onLogout={handleLogout}
+        onDeleteSummary={handleDeleteSummary}
       />
 
       <div className="flex-1 overflow-y-auto">
@@ -178,7 +205,7 @@ function AppContent() {
           )}
 
           {currentResult && !loading && (
-            <ResultView result={currentResult} />
+            <ResultView result={currentResult} onUpdateSummary={handleUpdateSummary} />
           )}
         </div>
       </div>

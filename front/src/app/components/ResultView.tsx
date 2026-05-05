@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
-import { Sparkles, Copy, Download } from 'lucide-react';
+import { useState, type ReactNode, useEffect } from 'react';
+import { Sparkles, Copy, Download, Edit3, Save, X } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface SummaryResult {
@@ -17,10 +17,20 @@ interface SummaryResult {
 
 interface ResultViewProps {
   result: SummaryResult | null;
+  onUpdateSummary?: (id: string, payload: { title?: string; summary?: string }) => void;
 }
 
-export function ResultView({ result }: ResultViewProps) {
+export function ResultView({ result, onUpdateSummary }: ResultViewProps) {
   const { t } = useLanguage();
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState('');
+
+  useEffect(() => {
+    if (result) {
+      setEditContent(result.summary);
+      setIsEditing(false);
+    }
+  }, [result?.id]);
 
   if (!result) {
     return null;
@@ -110,6 +120,20 @@ export function ResultView({ result }: ResultViewProps) {
     URL.revokeObjectURL(url);
   };
 
+  const handleSave = () => {
+    if (onUpdateSummary && result) {
+      onUpdateSummary(result.id, { summary: editContent });
+      setIsEditing(false);
+    }
+  };
+
+  const handleCancel = () => {
+    if (result) {
+      setEditContent(result.summary);
+    }
+    setIsEditing(false);
+  };
+
   return (
     <div className="w-full max-w-4xl mx-auto">
       <div className="rounded-3xl bg-card backdrop-blur-xl border border-border overflow-hidden shadow-lg">
@@ -138,20 +162,49 @@ export function ResultView({ result }: ResultViewProps) {
             </div>
 
             <div className="flex gap-2">
-              <button
-                onClick={handleCopy}
-                className="p-2.5 rounded-xl bg-secondary hover:bg-secondary/80 border border-border transition-all duration-200 group"
-              >
-                <Copy className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
-              </button>
-              <button
-                onClick={handleDownload}
-                disabled={!canDownload}
-                title={canDownload ? 'Download summary as TXT' : 'Summary is not ready for download yet'}
-                className="p-2.5 rounded-xl bg-secondary hover:bg-secondary/80 disabled:opacity-50 disabled:cursor-not-allowed border border-border transition-all duration-200 group"
-              >
-                <Download className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
-              </button>
+              {isEditing ? (
+                <>
+                  <button
+                    onClick={handleSave}
+                    className="p-2.5 rounded-xl bg-primary text-white hover:bg-primary/90 transition-all duration-200 shadow-sm"
+                    title="Save changes"
+                  >
+                    <Save className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={handleCancel}
+                    className="p-2.5 rounded-xl bg-secondary hover:bg-secondary/80 border border-border transition-all duration-200 group"
+                    title="Cancel editing"
+                  >
+                    <X className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="p-2.5 rounded-xl bg-secondary hover:bg-secondary/80 border border-border transition-all duration-200 group"
+                    title="Edit summary"
+                  >
+                    <Edit3 className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                  </button>
+                  <button
+                    onClick={handleCopy}
+                    className="p-2.5 rounded-xl bg-secondary hover:bg-secondary/80 border border-border transition-all duration-200 group"
+                    title="Copy summary"
+                  >
+                    <Copy className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                  </button>
+                  <button
+                    onClick={handleDownload}
+                    disabled={!canDownload}
+                    title={canDownload ? 'Download summary as TXT' : 'Summary is not ready for download yet'}
+                    className="p-2.5 rounded-xl bg-secondary hover:bg-secondary/80 disabled:opacity-50 disabled:cursor-not-allowed border border-border transition-all duration-200 group"
+                  >
+                    <Download className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -162,7 +215,16 @@ export function ResultView({ result }: ResultViewProps) {
           </h3>
 
           <div className="mb-8 space-y-3">
-            {renderStructuredSummary(result.summary)}
+            {isEditing ? (
+              <textarea
+                value={editContent}
+                onChange={(e) => setEditContent(e.target.value)}
+                className="w-full min-h-[300px] p-4 rounded-xl bg-background border border-border text-foreground font-['Inter'] text-[0.9375rem] leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary/20 resize-y"
+                placeholder="Enter summary content..."
+              />
+            ) : (
+              renderStructuredSummary(result.summary)
+            )}
           </div>
 
           <div className="space-y-6">

@@ -97,5 +97,24 @@ export const api = {
     });
     if (!res.ok) await parseError(res, 'Failed to fetch');
     return res.json();
+  },
+
+  async updateSummary(id: string, payload: { title?: string; summary?: string }) {
+    const res = await fetch(`${BASE_URL}/uploads/${id}/`, {
+      method: 'PATCH',
+      headers: getHeaders(),
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) await parseError(res, 'Failed to update summary');
+    return res.json();
+  },
+
+  async deleteSummary(id: string) {
+    const res = await fetch(`${BASE_URL}/uploads/${id}/`, {
+      method: 'DELETE',
+      headers: getHeaders()
+    });
+    if (!res.ok) await parseError(res, 'Failed to delete summary');
+    return res;
   }
 };

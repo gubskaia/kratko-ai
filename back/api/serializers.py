@@ -105,7 +105,7 @@ class UploadedFileSerializer(serializers.ModelSerializer):
             "summary",
             "error_message",
         ]
-        read_only_fields = ["uploaded_at", "file_type", "status", "extracted_text", "summary", "error_message"]
+        read_only_fields = ["uploaded_at", "file_type", "status", "extracted_text", "error_message"]
 
     def validate_file(self, value):
         allowed_extensions = tuple(
