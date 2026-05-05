@@ -10,6 +10,8 @@ KratkoAI is a full-stack app for summarizing documents with AI. Users can regist
 - Support for `txt`, `pdf`, and `docx`
 - JWT authentication
 - Personal upload history per user
+- Edit generated summaries inline
+- Delete summaries with confirmation
 - Retry failed or completed processing
 
 ## Stack
@@ -115,4 +117,6 @@ Frontend: `http://localhost:5173`
 | `GET` | `/api/uploads/` | List user uploads |
 | `POST` | `/api/uploads/` | Upload and summarize a file |
 | `GET` | `/api/uploads/:id/` | Get one summary |
+| `PATCH` | `/api/uploads/:id/` | Edit summary text |
+| `DELETE`| `/api/uploads/:id/` | Delete a summary |
 | `POST` | `/api/uploads/:id/retry/` | Re-run processing |
